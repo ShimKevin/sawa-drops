@@ -1,1 +1,1 @@
-web: gunicorn sawa-drops.wsgi
+web: gunicorn app:app
