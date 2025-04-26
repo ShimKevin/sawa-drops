@@ -1,50 +1,57 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory
 from werkzeug.utils import secure_filename
 import os
-from datetime import datetime
 
 app = Flask(__name__)
+app.secret_key = 'your-secret-key-here'
 
 # Configuration
-app.config['UPLOAD_FOLDER'] = 'static/uploads'
-app.config['MAX_DISPLAY_IMAGES'] = 4  # Show only 4 most recent images
-app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif'}
+UPLOAD_FOLDER = 'static/uploads'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# Ensure upload folder exists
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 def allowed_file(filename):
     return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-def get_sorted_images():
-    """Get images sorted by modification time (newest first)"""
-    try:
-        images = []
-        for f in os.listdir(app.config['UPLOAD_FOLDER']):
-            path = os.path.join(app.config['UPLOAD_FOLDER'], f)
-            if os.path.isfile(path):
-                images.append({
-                    'name': f,
-                    'path': path,
-                    'mtime': os.path.getmtime(path)
-                })
-        # Sort by modification time (newest first)
-        return sorted(images, key=lambda x: x['mtime'], reverse=True)
-    except FileNotFoundError:
-        return []
-
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/')
 def index():
-    if request.method == 'POST' and 'image' in request.files:
-        file = request.files['image']
-        if file.filename != '' and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+    # Get list of existing images
+    images = []
+    for filename in os.listdir(app.config['UPLOAD_FOLDER']):
+        if allowed_file(filename):
+            images.append(url_for('static', filename=f'uploads/{filename}'))
+    return render_template('index.html', gallery_urls=images)
+
+@app.route('/upload', methods=['GET', 'POST'])
+def upload():
+    if request.method == 'POST':
+        # Check if files were submitted
+        if 'image' not in request.files:
+            flash('No files were uploaded')
+            return redirect(request.url)
+        
+        files = request.files.getlist('image')
+        
+        for file in files:
+            if file.filename == '':
+                continue
+                
+            if file and allowed_file(file.filename):
+                filename = secure_filename(file.filename)  # Now this will work
+                file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+                flash(f'Successfully uploaded {filename}')
+        
+        return redirect(url_for('index'))
     
-    # Get only the 4 most recent images
-    images = get_sorted_images()[:app.config['MAX_DISPLAY_IMAGES']]
-    gallery_urls = [url_for('static', filename=f'uploads/{img["name"]}') for img in images]
-    
-    return render_template('index.html', gallery_urls=gallery_urls)
+    return render_template('upload.html')
+
+@app.route('/uploads/<filename>')
+def uploaded_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 if __name__ == '__main__':
-    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
     app.run(debug=True)
