@@ -1,3 +1,4 @@
+
 🧊 Sawa Drops - Purified Drinking Water Delivery Web App
 
 
@@ -61,3 +62,6 @@ Phone: +254 790 229 112
 Physical Address: Teriyet Business Centre, Kitale Town, Kenya
 
 We appreciate your interest in Sawa Drops — your trusted source for safe and pure drinking water. 💧
+
+# sawa-drops
+an online shop for refilling and buying purified fresh drinking water
